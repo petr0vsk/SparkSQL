@@ -1,6 +1,6 @@
 # Нетология ДЗ
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum, desc, max
+from pyspark.sql.functions import col, sum, desc, max,  lag, desc
 from pyspark.sql.window import Window
 from pyspark.sql.functions import rank
 # Инициализация SparkSession
@@ -25,7 +25,6 @@ output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/top_15_countries'
 top_15_countries.write.csv(output_path, header=True, mode="overwrite")
 ##############################################################################
 # Задача 2
-# Загрузка данных
 # Фильтрация данных за последнюю неделю марта 2021 года
 df_filtered = df.filter((col("date") >= "2021-03-24") & (col("date") <= "2021-03-31"))
 # Группировка по стране и дате, не агрегируем данные, чтобы сохранить детализацию по дням
@@ -40,4 +39,19 @@ top_10_days.show()
 # Сохранение в CSV 
 output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/top_10_countries'
 top_10_days.write.csv(output_path, header=True, mode="overwrite")
-
+################################################################################
+# Задача 3
+# Фильтрация данных для России за последнюю неделю марта 2021 года
+df_filtered = df.filter((col("location") == "Russia") & (col("date") >= "2021-03-24") & (col("date") <= "2021-03-31"))
+# Оконная функция для сортировки по дате и получения количества новых случаев за предыдущий день
+windowSpec = Window.partitionBy("location").orderBy("date")
+df_with_lag = df_filtered.withColumn("new_cases_yesterday", lag("new_cases").over(windowSpec))
+# Расчет дельты между количеством новых случаев сегодня и вчера
+df_with_delta = df_with_lag.withColumn("delta", col("new_cases") - col("new_cases_yesterday"))
+# Выбор необходимых колонок для выходного датасета
+output_df = df_with_delta.select("date", "new_cases_yesterday", "new_cases", "delta")
+# Вывод результатов
+output_df.show()
+# Сохранение в CSV 
+output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/last_week_March'
+output_df.write.csv(output_path, header=True, mode="overwrite")
