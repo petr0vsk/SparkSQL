@@ -1,3 +1,4 @@
+# Нетология ДЗ
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, desc
 # Инициализация SparkSession
@@ -14,3 +15,7 @@ df_sorted = df_grouped.orderBy(desc("total_cases_on_31_march"))
 top_15_countries = df_sorted.limit(15)
 # Показ результатов
 top_15_countries.show()
+# Путь, куда будет сохранен файл
+output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/top_15_countries.csv'
+# Сохранение DataFrame в CSV, если уже есть перезапишем
+top_15_countries.write.csv(output_path, header=True, mode="overwrite")
