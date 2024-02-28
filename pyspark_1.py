@@ -1,8 +1,8 @@
 # Нетология ДЗ
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum, desc, max,  lag, desc
+from pyspark.sql.functions import col, sum, desc, max, lag, desc, coalesce, lit
 from pyspark.sql.window import Window
-from pyspark.sql.functions import rank
+from pyspark.sql.functions import rank, coalesce
 # Инициализация SparkSession
 spark = SparkSession.builder.appName("covid_analysis").getOrCreate()
 # Загрузка данных
@@ -47,11 +47,21 @@ df_filtered = df.filter((col("location") == "Russia") & (col("date") >= "2021-03
 windowSpec = Window.partitionBy("location").orderBy("date")
 df_with_lag = df_filtered.withColumn("new_cases_yesterday", lag("new_cases").over(windowSpec))
 # Расчет дельты между количеством новых случаев сегодня и вчера
-df_with_delta = df_with_lag.withColumn("delta", col("new_cases") - col("new_cases_yesterday"))
+# Расчет дельты между количеством новых случаев сегодня и вчера с заменой null на 0
+df_with_delta = df_with_lag.withColumn("delta", coalesce(col("new_cases") - col("new_cases_yesterday"), lit(0)))
 # Выбор необходимых колонок для выходного датасета
-output_df = df_with_delta.select("date", "new_cases_yesterday", "new_cases", "delta")
+output_df = df_with_delta.select(
+    col("date").alias("число"),
+    coalesce(col("new_cases_yesterday"), lit(0)).alias("кол-во новых случаев вчера"),
+    col("new_cases").alias("кол-во новых случаев сегодня"),
+    col("delta").alias("дельта")
+)
+
 # Вывод результатов
 output_df.show()
 # Сохранение в CSV 
 output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/last_week_March'
 output_df.write.csv(output_path, header=True, mode="overwrite")
+
+
+
