@@ -1,4 +1,4 @@
-# Нетология ДЗ
+# Нетология Домашнее задание по теме «Spark SQL»
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, sum, desc, max, lag, desc, coalesce, lit, format_number
 from pyspark.sql.window import Window
@@ -62,8 +62,7 @@ top_10_days.show()
 # Сохранение в CSV 
 output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/top_10_countries'
 top_10_days.write.csv(output_path, header=True, mode="overwrite")
-################################################################################
-# Задача 3
+### Задача 3 ##############################################################################
 # Фильтрация данных для России за последнюю неделю марта 2021 года
 df_filtered = df.filter((col("location") == "Russia") & (col("date") >= "2021-03-24") & (col("date") <= "2021-03-31"))
 # Оконная функция для сортировки по дате и получения количества новых случаев за предыдущий день
