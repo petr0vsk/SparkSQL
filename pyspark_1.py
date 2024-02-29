@@ -9,15 +9,26 @@ spark = SparkSession.builder.appName("covid_analysis").getOrCreate()
 df = spark.read.csv('/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/covid-data.csv', header=True, inferSchema=True)
 ############################################################################
 # Задача 1
+# Для расчета процента переболевших населения страны без прямых данных о населении, 
+# мы можем использовать колонку total_cases_per_million, 
+# так как она отражает общее количество случаев на миллион населения. 
+# Используя эту колонку, мы можем оценить процент переболевших относительно общего числа населения, 
+# предполагая что 1 миллион в этой колонке соответствует 1 миллиону населения. 
+# Это позволит нам обойтись без явных данных о населении каждой страны.
 # Фильтрация данных на 31 марта
 df_filtered = df.filter(df['date'] == '2020-03-31')
-# Группировка по странам с расчетом максимального значения общего количества случаев
-df_grouped = df_filtered.groupBy("iso_code", "location").agg({"total_cases": "max"}).withColumnRenamed("max(total_cases)", "total_cases_on_31_march")
-# Сортировка по убыванию количества случаев
-df_sorted = df_grouped.orderBy(desc("total_cases_on_31_march"))
-# Выбор 15 стран с наибольшим количеством случаев
-top_15_countries = df_sorted.limit(15)
-# Показ результатов
+# Преобразование колонки total_cases_per_million в числовой формат
+df_filtered = df_filtered.withColumn("total_cases_per_million", df_filtered["total_cases_per_million"].cast("float"))
+# Расчет процента переболевших, используя total_cases_per_million
+df_filtered = df_filtered.withColumn("percentage_infected", col("total_cases_per_million") / 10000)
+# Сортировка стран по убыванию процента переболевших и выбор топ-15
+df_top15 = df_filtered.sort(col("percentage_infected").desc()).limit(15)
+# Применение алиасов к колонкам для итогового датасета
+top_15_countries = df_top15.select(
+    col("iso_code").alias("iso_code"),
+    col("location").alias("страна"),
+    col("percentage_infected").alias("процент переболевших")
+)
 top_15_countries.show()
 # Путь, куда будет сохранен файл
 output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/top_15_countries'
