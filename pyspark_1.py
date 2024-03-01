@@ -44,19 +44,31 @@ top_15_countries.show()
 output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/top_15_countries'
 # Сохранение DataFrame в CSV, если уже есть перезапишем
 top_15_countries.write.csv(output_path, header=True, mode="overwrite")
+
 ### Задача 2 ###########################################################################
 #  Решаем исходя из предположения что задача заключается 
 # в поиске максимального единичного значения новых случаев за день в пределах последней недели марта.
+# Убираем из результата не-страны с помощью списка исключений
+exclusions = ['World', 'Europe', 'Asia', 'North America', 'South America', 'European Union', ] 
 
-# Фильтрация данных за последнюю неделю марта 2021 года
-df_filtered = df.filter((col("date") >= "2021-03-24") & (col("date") <= "2021-03-31"))
+# Фильтрация данных за последнюю неделю марта 2021 года, исключая не-страновые записи
+
+df_filtered = df.filter(
+    (col("date") >= "2021-03-24") & 
+    (col("date") <= "2021-03-31") &
+    (~df["location"].isin(exclusions))
+)
+
 # Группировка по стране и дате, не агрегируем данные, чтобы сохранить детализацию по дням
 df_grouped = df_filtered.select("location", "date", "new_cases")
+
+
 # Находим день с максимальным количеством новых случаев для каждой страны
 windowSpec = Window.partitionBy("location").orderBy(desc("new_cases"))
 df_max_cases_per_country = df_grouped.withColumn("rank", rank().over(windowSpec))\
     .filter(col("rank") == 1)\
     .drop("rank")
+
 # Применение алиасов к колонкам
 df_max_cases_per_country = df_max_cases_per_country.select(
     col("date").alias("число"),
@@ -70,6 +82,7 @@ top_10_days.show()
 # Сохранение в CSV 
 output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/top_10_countries'
 top_10_days.write.csv(output_path, header=True, mode="overwrite")
+
 ### Задача 3 ##############################################################################
 # Фильтрация данных для России за последнюю неделю марта 2021 года
 df_filtered = df.filter((col("location") == "Russia") & (col("date") >= "2021-03-24") & (col("date") <= "2021-03-31"))
