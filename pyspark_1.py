@@ -1,6 +1,6 @@
 # Нетология Домашнее задание по теме «Spark SQL»
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum, desc, max, lag, desc, coalesce, lit, format_number
+from pyspark.sql.functions import col, sum, desc, max, lag, desc, coalesce, lit, format_number, dayofmonth, month
 from pyspark.sql.window import Window
 from pyspark.sql.functions import rank, coalesce
 # Инициализация SparkSession
@@ -16,20 +16,28 @@ df = spark.read.csv('/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/covid-data.csv', 
 # Это позволит нам обойтись без явных данных о населении каждой страны.
 
 # Фильтрация данных на 31 марта
-df_filtered = df.filter(df['date'] == '2020-03-31')
+# df_filtered = df.filter(df['date'] == '2020-03-31') - это конечно был серьезный косяк - прое...ть остальные года выборки, пофиксим
+# Фильтрация данных на 31 марта по всем годам.
+df_filtered = df.filter((dayofmonth(df['date']) == 31) & (month(df['date']) == 3))
 # Преобразование колонки total_cases_per_million в числовой формат
 df_filtered = df_filtered.withColumn("total_cases_per_million", df_filtered["total_cases_per_million"].cast("float"))
+
 # Расчет процента переболевших, используя total_cases_per_million
 df_filtered = df_filtered.withColumn("percentage_infected", col("total_cases_per_million") / 10000)
+
 # Округление процента переболевших до двух знаков после запятой
 df_filtered = df_filtered.withColumn("percentage_infected", format_number("percentage_infected", 2))
+
+# Группировка по странам и вычисление максимального процента переболевших среди всех 31 марта
+df_grouped = df_filtered.groupBy("iso_code", "location").agg(max("percentage_infected").alias("max_percentage_infected"))
+
 # Сортировка стран по убыванию процента переболевших и выбор топ-15
-df_top15 = df_filtered.sort(col("percentage_infected").desc()).limit(15)
+df_top15 = df_grouped.sort(col("max_percentage_infected").desc()).limit(15)
 # Применение алиасов к колонкам для итогового датасета
 top_15_countries = df_top15.select(
     col("iso_code").alias("iso_code"),
     col("location").alias("страна"),
-    col("percentage_infected").alias("процент переболевших")
+    col("max_percentage_infected").alias("процент переболевших")
 )
 top_15_countries.show()
 # Путь, куда будет сохранен файл
