@@ -1,3 +1,4 @@
+# Для Задачи 1. Определим какие года пристуствуют в датасете
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import year
 
