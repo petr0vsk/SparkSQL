@@ -1,6 +1,6 @@
 # Нетология Домашнее задание по теме «Spark SQL»
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum, desc, max, lag, desc, coalesce, lit, format_number, dayofmonth, month
+from pyspark.sql.functions import col, sum, desc, max, lag, desc, coalesce, lit, format_number, dayofmonth, month, when
 from pyspark.sql.window import Window
 from pyspark.sql.functions import rank, coalesce
 # Инициализация SparkSession
@@ -52,23 +52,18 @@ top_15_countries.write.csv(output_path, header=True, mode="overwrite")
 exclusions = ['World', 'Europe', 'Asia', 'North America', 'South America', 'European Union', ] 
 
 # Фильтрация данных за последнюю неделю марта 2021 года, исключая не-страновые записи
-
 df_filtered = df.filter(
     (col("date") >= "2021-03-24") & 
     (col("date") <= "2021-03-31") &
     (~df["location"].isin(exclusions))
 )
-
 # Группировка по стране и дате, не агрегируем данные, чтобы сохранить детализацию по дням
 df_grouped = df_filtered.select("location", "date", "new_cases")
-
-
 # Находим день с максимальным количеством новых случаев для каждой страны
 windowSpec = Window.partitionBy("location").orderBy(desc("new_cases"))
 df_max_cases_per_country = df_grouped.withColumn("rank", rank().over(windowSpec))\
     .filter(col("rank") == 1)\
     .drop("rank")
-
 # Применение алиасов к колонкам
 df_max_cases_per_country = df_max_cases_per_country.select(
     col("date").alias("число"),
@@ -84,22 +79,23 @@ output_path = '/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/top_10_countries'
 top_10_days.write.csv(output_path, header=True, mode="overwrite")
 
 ### Задача 3 ##############################################################################
-# Фильтрация данных для России за последнюю неделю марта 2021 года
+# Фильтрация данных для России за последнюю неделю марта 2021 года, включая день перед началом последней недели марта
 df_filtered = df.filter((col("location") == "Russia") & (col("date") >= "2021-03-24") & (col("date") <= "2021-03-31"))
-# Оконная функция для сортировки по дате и получения количества новых случаев за предыдущий день
+# Оконная функция для сортировки по дате
 windowSpec = Window.partitionBy("location").orderBy("date")
-df_with_lag = df_filtered.withColumn("new_cases_yesterday", lag("new_cases").over(windowSpec))
-# Расчет дельты между количеством новых случаев сегодня и вчера
-# Расчет дельты между количеством новых случаев сегодня и вчера с заменой null на 0
-df_with_delta = df_with_lag.withColumn("delta", coalesce(col("new_cases") - col("new_cases_yesterday"), lit(0)))
+# Получение количества новых случаев за предыдущий день
+df_with_lag = df_filtered.withColumn("new_cases_yesterday", lag("new_cases", 1, 0).over(windowSpec))
+# Расчет дельты
+df_with_delta = df_with_lag.withColumn("delta", 
+                                       when(col("date") == "2021-03-24", col("new_cases"))
+                                       .otherwise(col("new_cases") - col("new_cases_yesterday")))
 # Выбор необходимых колонок для выходного датасета
 output_df = df_with_delta.select(
     col("date").alias("число"),
-    coalesce(col("new_cases_yesterday"), lit(0)).alias("кол-во новых случаев вчера"),
+    col("new_cases_yesterday").alias("кол-во новых случаев вчера"),
     col("new_cases").alias("кол-во новых случаев сегодня"),
     col("delta").alias("дельта")
 )
-
 # Вывод результатов
 output_df.show()
 # Сохранение в CSV 
