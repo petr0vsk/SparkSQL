@@ -48,7 +48,7 @@ top_15_countries.write.csv(output_path, header=True, mode="overwrite")
 #  Решаем исходя из предположения что задача заключается 
 # в поиске максимального единичного значения новых случаев за день в пределах последней недели марта.
 # Убираем из результата не-страны с помощью списка исключений
-exclusions = ['World', 'Europe', 'Asia', 'North America', 'South America', 'European Union', ] 
+exclusions = ['World', 'Europe', 'Asia', 'North America', 'South America', 'European Union', 'Africa'] 
 
 # Фильтрация данных за последнюю неделю марта 2021 года, исключая не-страновые записи
 df_filtered = df.filter(
