@@ -17,16 +17,21 @@ df = spark.read.csv('/home/petr0vsk/WorkSQL/Netology_Spark/Z_2/covid-data.csv', 
 
 # Фильтрация данных на 31 марта
 # df_filtered = df.filter(df['date'] == '2020-03-31') - это конечно был серьезный косяк - прое...ть остальные года выборки, пофиксим
+<<<<<<< HEAD
 
 # Фильтрация данных на 31 марта 2021 года
 df_filtered = df.filter(df['date'] == '2021-03-31')
 
+=======
+# Фильтрация данных на 31 марта по всем годам.
+df_filtered = df.filter((dayofmonth(df['date']) == 31) & (month(df['date']) == 3))
+# Преобразование колонки total_cases_per_million в числовой формат
+df_filtered = df_filtered.withColumn("total_cases_per_million", df_filtered["total_cases_per_million"].cast("float"))
+>>>>>>> 4a2e4530e95944b985a3da980fe3ec0efdba163f
 # Расчет процента переболевших, используя total_cases_per_million
 df_filtered = df_filtered.withColumn("percentage_infected", col("total_cases_per_million") / 10000)
-
 # Округление процента переболевших до двух знаков после запятой
 df_filtered = df_filtered.withColumn("percentage_infected", format_number("percentage_infected", 2))
-
 # Группировка по странам и вычисление максимального процента переболевших среди всех 31 марта
 df_grouped = df_filtered.groupBy("iso_code", "location").agg(max("percentage_infected").alias("max_percentage_infected"))
 
