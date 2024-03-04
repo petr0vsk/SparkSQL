@@ -79,19 +79,20 @@ top_10_days.write.csv(output_path, header=True, mode="overwrite")
 
 ### Задача 3 ##############################################################################
 # Фильтрация данных для России за последнюю неделю марта 2021 года, включая день перед началом последней недели марта
-df_filtered = df.filter((col("location") == "Russia") & (col("date") >= "2021-03-24") & (col("date") <= "2021-03-31"))
+#df_filtered = df.filter((col("location") == "Russia") & (col("date") >= "2021-03-24") & (col("date") <= "2021-03-31"))
+df_filtered = df.filter((col("location") == "Russia") &  (col("date") >= "2021-03-23") & (col("date") <= "2021-03-31"))
 # Оконная функция для сортировки по дате
 windowSpec = Window.partitionBy("location").orderBy("date")
-# Получение количества новых случаев за предыдущий день
-df_with_lag = df_filtered.withColumn("new_cases_yesterday", lag("new_cases", 1, 0).over(windowSpec))
+# Расчет количества новых случаев за предыдущий день
+df_with_lag = df_filtered.withColumn("new_cases_yesterday", lag("new_cases").over(windowSpec))
 # Расчет дельты
-df_with_delta = df_with_lag.withColumn("delta", 
-                                       when(col("date") == "2021-03-24", col("new_cases"))
-                                       .otherwise(col("new_cases") - col("new_cases_yesterday")))
+df_with_delta = df_with_lag.withColumn("delta", col("new_cases") - coalesce(col("new_cases_yesterday"), lit(0)))
+# Фильтрация, чтобы убрать лишнюю строку (23 марта)
+df_final = df_with_delta.filter(col("date") >= "2021-03-24")
 # Выбор необходимых колонок для выходного датасета
-output_df = df_with_delta.select(
+output_df = df_final.select(
     col("date").alias("число"),
-    col("new_cases_yesterday").alias("кол-во новых случаев вчера"),
+    coalesce(col("new_cases_yesterday"), lit(0)).alias("кол-во новых случаев вчера"),
     col("new_cases").alias("кол-во новых случаев сегодня"),
     col("delta").alias("дельта")
 )
